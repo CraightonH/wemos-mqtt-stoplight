@@ -5,7 +5,7 @@
 bool CYCLE = false;
 long startOfCycleTime = millis();
 long periodicTimer = millis();
-bool FLASH_RED = false;
+bool FLASH = false;
 bool DOOR_OPEN = false;
 
 String devID = "esp8266-stoplight";//getMAC();
@@ -26,7 +26,7 @@ const char* logInfoTopic = "/log/info";
 char message_buff[100];
 
 WiFiClient wifiClient;
-PubSubClient client("10.37.43.70", 1883, wifiClient);
+PubSubClient client("192.168.1.61", 1883, wifiClient);
 
 void setLED(String light) {
   String prevState = getLEDStatus();
@@ -66,47 +66,50 @@ void off() {
     setLED("off");
 }
 
+void startTimer() {
+  startOfCycleTime = millis();
+}
+
 void cycle() {
-    CYCLE = true;
-    startOfCycleTime = millis();
+  CYCLE = true;
+  startTimer();
 }
 
 void pubLightPeriodic() {
-    if (millis() > periodicTimer + 20000) {
-      periodicTimer = millis();
-      pubLight(stoplightStatusPTopic);
-    }
+  if (millis() > periodicTimer + 20000) {
+    periodicTimer = millis();
+    pubLight(stoplightStatusPTopic);
+  }
 }
 
 void pubLight(const char* topic) {
-    client.publish(topic, getLEDStatus().c_str());
+  client.publish(topic, getLEDStatus().c_str());
 }
 
 void handleDistance(int distance) {
-  pubDebug(String("DOOR_OPEN: " + DOOR_OPEN));
   if (DOOR_OPEN) {
     if (distance <= 10) {
-      if (FLASH_RED) {
-        FLASH_RED = false;
-        redOn();
-      } else {
-        FLASH_RED = true;
-        off();
-      }
+      FLASH = true;
+      startTimer();
     }
     if (distance > 10 && distance <= 20) {
+      FLASH = false;
       redOn();
     }
     if (distance > 20 && distance <= 30) {
+      FLASH = false;
       yellowOn();  
     }
     if (distance > 30 && distance <=50) {
+      FLASH = false;
       greenOn();
     }
     if (distance > 50) {
+      FLASH = false;
       off();
     }
   } else {
+    FLASH = false;
     off();
   }
 }
@@ -211,8 +214,6 @@ void setup(void) {
   pinMode(YEL_LIGHT, OUTPUT);
   pinMode(GRE_LIGHT, OUTPUT);
   client.setCallback(callback);
-  
-  //cycle();
 }
 
 void loop(void) {
@@ -221,7 +222,16 @@ void loop(void) {
   }
   client.loop();
   pubLightPeriodic();
-  if (CYCLE) {
+  if (FLASH) {
+    String prevColor = getLEDStatus();
+    if ((millis() < startOfCycleTime + 1000) && prevColor == "red") {
+      setLED("off");
+    } else if ((millis() >= startOfCycleTime + 1000 && millis() < startOfCycleTime + 2000)) {
+      setLED("red");
+    } else if (millis() >= startOfCycleTime + 2000) {
+      startTimer();
+    }
+  } else if (CYCLE) {
     if (millis() < startOfCycleTime + 4000) setLED("red");
     if (millis() > startOfCycleTime + 4000 && millis() < startOfCycleTime + 8000) setLED("green");
     if (millis() > startOfCycleTime + 8000 && millis() < startOfCycleTime + 12000) setLED("yellow");
