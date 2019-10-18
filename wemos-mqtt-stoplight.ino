@@ -13,8 +13,12 @@ const int led = 13;
 const int RED_LIGHT = D4;
 const int YEL_LIGHT = D3;
 const int GRE_LIGHT = D2;
-const char* parkDistanceTopic = "/garage/park/distance/#";
-const char* garageDoorTopic = "/garage/door/#";
+const char* parkDistanceAllTopic = "/garage/park/distance/#";
+const char* parkDistanceTopic = "/garage/park/distance";
+const char* parkDistancePTopic = "/garage/park/distance/p";
+const char* garageDoorAllTopic = "/garage/door/#";
+const char* garageDoorTopic = "/garage/door";
+const char* garageDoorPTopic = "/garage/door/p";
 const char* stoplightStatusTopic = "/garage/stoplight/status";
 const char* stoplightStatusPTopic = "/garage/stoplight/status/p";
 const char* stoplightActionTopic = "/garage/stoplight/action";
@@ -79,6 +83,7 @@ void pubLight(const char* topic) {
 }
 
 void handleDistance(int distance) {
+  pubDebug(String("DOOR_OPEN: " + DOOR_OPEN));
   if (DOOR_OPEN) {
     if (distance <= 10) {
       if (FLASH_RED) {
@@ -101,6 +106,8 @@ void handleDistance(int distance) {
     if (distance > 50) {
       off();
     }
+  } else {
+    off();
   }
 }
 
@@ -108,7 +115,7 @@ void updateGarageDoor(String message) {
   if (message == "open") {
     DOOR_OPEN = true;  
   } else {
-    DOOR_OPEN = false;  
+    DOOR_OPEN = false;
   }
 }
 
@@ -126,10 +133,10 @@ void callback(char* topic, byte* payload, unsigned int length) {
   dbgMessage += strTopic;
   dbgMessage += ": ";
   dbgMessage += message;
-  client.publish(logInfoTopic, dbgMessage.c_str());
-  if (strTopic == parkDistanceTopic) {
+  pubDebug(dbgMessage);
+  if (strTopic == parkDistanceTopic || strTopic == parkDistancePTopic) {
     handleDistance(message.toInt());
-  } else if (strTopic == garageDoorTopic) {
+  } else if (strTopic == garageDoorTopic || strTopic == garageDoorPTopic) {
     updateGarageDoor(message);
   } else if (strTopic == stoplightActionTopic) {
     if (message == "red") {
@@ -143,6 +150,8 @@ void callback(char* topic, byte* payload, unsigned int length) {
     } else if (message == "cycle") {
       cycle();
     }
+  } else {
+    pubDebug(String(parkDistanceTopic));
   }
 }
 
@@ -178,13 +187,17 @@ void reconnectMQTT() {
         Serial.println("failed to publish");
       }
       client.subscribe(stoplightActionTopic);
-      client.subscribe(parkDistanceTopic);
-      client.subscribe(garageDoorTopic);
+      client.subscribe(parkDistanceAllTopic);
+      client.subscribe(garageDoorAllTopic);
     } else {
       Serial.println("MQTT connection failed");
       delay(5000);
     }
   }
+}
+
+void pubDebug(String message) {
+  client.publish("/log/debug", message.c_str());
 }
 
 void setup(void) {
