@@ -116,7 +116,17 @@ void callback(char* topic, byte* payload, unsigned int length) {
   } else if (strTopic == garageDoorTopic) {
     handleGarageDoor();
   } else if (strTopic == stoplightActionTopic) {
-    setLED(message);
+    if (message == "red") {
+      redOn();  
+    } else if (message == "yellow") {
+      yellowOn();  
+    } else if (message == "green") {
+      greenOn();  
+    } else if (message == "off") {
+      off();
+    } else if (message == "cycle") {
+      cycle();
+    }
   }
 }
 
