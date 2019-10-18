@@ -5,6 +5,8 @@
 bool CYCLE = false;
 long startOfCycleTime = millis();
 long periodicTimer = millis();
+bool FLASH_RED = false;
+bool DOOR_OPEN = false;
 
 String devID = "esp8266-stoplight";//getMAC();
 const int led = 13;
@@ -16,11 +18,11 @@ const char* garageDoorTopic = "/garage/door/#";
 const char* stoplightStatusTopic = "/garage/stoplight/status";
 const char* stoplightStatusPTopic = "/garage/stoplight/status/p";
 const char* stoplightActionTopic = "/garage/stoplight/action";
-const char* debugTopic = "/device/debug";
+const char* logInfoTopic = "/log/info";
 char message_buff[100];
 
 WiFiClient wifiClient;
-PubSubClient client("192.168.1.61", 1883, wifiClient);
+PubSubClient client("10.37.43.70", 1883, wifiClient);
 
 void setLED(String light) {
   String prevState = getLEDStatus();
@@ -76,24 +78,38 @@ void pubLight(const char* topic) {
     client.publish(topic, getLEDStatus().c_str());
 }
 
-String getMAC() {
-  String result;
-  uint8_t mac[6];
-  WiFi.macAddress(mac);
-  for (int i = 0; i < 6; ++i) {
-    result += String(mac[i], 16);
-    if (i < 5)
-      result += ':';
+void handleDistance(int distance) {
+  if (DOOR_OPEN) {
+    if (distance <= 10) {
+      if (FLASH_RED) {
+        FLASH_RED = false;
+        redOn();
+      } else {
+        FLASH_RED = true;
+        off();
+      }
+    }
+    if (distance > 10 && distance <= 20) {
+      redOn();
+    }
+    if (distance > 20 && distance <= 30) {
+      yellowOn();  
+    }
+    if (distance > 30 && distance <=50) {
+      greenOn();
+    }
+    if (distance > 50) {
+      off();
+    }
   }
-  return result;
 }
 
-void handleDistance() {
-  
-}
-
-void handleGarageDoor() {
-  
+void updateGarageDoor(String message) {
+  if (message == "open") {
+    DOOR_OPEN = true;  
+  } else {
+    DOOR_OPEN = false;  
+  }
 }
 
 void callback(char* topic, byte* payload, unsigned int length) {
@@ -110,11 +126,11 @@ void callback(char* topic, byte* payload, unsigned int length) {
   dbgMessage += strTopic;
   dbgMessage += ": ";
   dbgMessage += message;
-  client.publish(debugTopic, dbgMessage.c_str());
+  client.publish(logInfoTopic, dbgMessage.c_str());
   if (strTopic == parkDistanceTopic) {
-    handleDistance();
+    handleDistance(message.toInt());
   } else if (strTopic == garageDoorTopic) {
-    handleGarageDoor();
+    updateGarageDoor(message);
   } else if (strTopic == stoplightActionTopic) {
     if (message == "red") {
       redOn();  
@@ -156,7 +172,7 @@ void reconnectMQTT() {
       String message = devID;
       message += ": ";
       message += WiFi.localIP().toString();
-      if (client.publish(debugTopic, message.c_str())) {
+      if (client.publish(logInfoTopic, message.c_str())) {
         Serial.println("published successfully");
       } else {
         Serial.println("failed to publish");
