@@ -5,7 +5,7 @@
 bool CYCLE = false;
 long startOfCycleTime = millis();
 long periodicTimer = millis();
-int period = 20000;
+int period = 300000;
 bool FLASH = false;
 bool DOOR_OPEN = false;
 
@@ -118,10 +118,8 @@ void handleDistance(int distance) {
 void updateGarageDoor(String message) {
   if (message == "open") {
     DOOR_OPEN = true;
-    period = 1000;
   } else {
     DOOR_OPEN = false;
-    period = 300000;
     off();
   }
 }
