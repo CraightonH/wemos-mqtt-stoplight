@@ -5,6 +5,7 @@
 bool CYCLE = false;
 long startOfCycleTime = millis();
 long periodicTimer = millis();
+int period = 20000;
 bool FLASH = false;
 bool DOOR_OPEN = false;
 
@@ -48,21 +49,25 @@ String getLEDStatus() {
 
 void redOn() {
     CYCLE = false;
+    FLASH = false;
     setLED("red");
 }
 
 void yellowOn() {
     CYCLE = false;
+    FLASH = false;
     setLED("yellow");
 }
 
 void greenOn() {
     CYCLE = false;
+    FLASH = false;
     setLED("green");
 }
 
 void off() {
     CYCLE = false;
+    FLASH = false;
     setLED("off");
 }
 
@@ -72,11 +77,12 @@ void startTimer() {
 
 void cycle() {
   CYCLE = true;
+  FLASH = false;
   startTimer();
 }
 
 void pubLightPeriodic() {
-  if (millis() > periodicTimer + 20000) {
+  if (millis() > periodicTimer + period) {
     periodicTimer = millis();
     pubLight(stoplightStatusPTopic);
   }
@@ -93,32 +99,30 @@ void handleDistance(int distance) {
       startTimer();
     }
     if (distance > 10 && distance <= 20) {
-      FLASH = false;
       redOn();
     }
     if (distance > 20 && distance <= 30) {
-      FLASH = false;
       yellowOn();  
     }
     if (distance > 30 && distance <=50) {
-      FLASH = false;
       greenOn();
     }
     if (distance > 50) {
-      FLASH = false;
       off();
     }
   } else {
-    FLASH = false;
     off();
   }
 }
 
 void updateGarageDoor(String message) {
   if (message == "open") {
-    DOOR_OPEN = true;  
+    DOOR_OPEN = true;
+    period = 1000;
   } else {
     DOOR_OPEN = false;
+    period = 300000;
+    off();
   }
 }
 
