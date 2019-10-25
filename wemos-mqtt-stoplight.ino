@@ -9,7 +9,7 @@ int period = 300000;
 bool FLASH = false;
 bool DOOR_OPEN = false;
 
-String devID = "esp8266-stoplight";//getMAC();
+String devID = "esp8266-stoplight";
 const int led = 13;
 const int RED_LIGHT = D4;
 const int YEL_LIGHT = D3;
@@ -27,7 +27,7 @@ const char* logInfoTopic = "/log/info";
 char message_buff[100];
 
 WiFiClient wifiClient;
-PubSubClient client("192.168.1.61", 1883, wifiClient);
+PubSubClient client("10.37.39.155", 1883, wifiClient);
 
 void setLED(String light) {
   String prevState = getLEDStatus();
@@ -95,8 +95,10 @@ void pubLight(const char* topic) {
 void handleDistance(int distance) {
   if (DOOR_OPEN) {
     if (distance <= 10) {
+      if (!FLASH) {
+        startTimer();
+      }
       FLASH = true;
-      startTimer();
     }
     if (distance > 10 && distance <= 20) {
       redOn();
