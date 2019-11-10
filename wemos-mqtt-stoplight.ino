@@ -5,7 +5,7 @@
 bool CYCLE = false;
 long startOfCycleTime = millis();
 long periodicTimer = millis();
-int period = 300000;
+int period = 10000;
 bool FLASH = false;
 bool DOOR_OPEN = false;
 
@@ -14,14 +14,9 @@ const int led = 13;
 const int RED_LIGHT = D4;
 const int YEL_LIGHT = D3;
 const int GRE_LIGHT = D2;
-const char* parkDistanceAllTopic = "/garage/park/distance/#";
 const char* parkDistanceTopic = "/garage/park/distance";
-const char* parkDistancePTopic = "/garage/park/distance/p";
-const char* garageDoorAllTopic = "/garage/door/#";
 const char* garageDoorTopic = "/garage/door";
-const char* garageDoorPTopic = "/garage/door/p";
 const char* stoplightStatusTopic = "/garage/stoplight/status";
-const char* stoplightStatusPTopic = "/garage/stoplight/status/p";
 const char* stoplightActionTopic = "/garage/stoplight/action";
 const char* logInfoTopic = "/log/info";
 char message_buff[100];
@@ -86,7 +81,7 @@ void pubLightPeriodic() {
   if (millis() > periodicTimer + period) {
     //pubDebug("timer due");
     periodicTimer = millis();
-    pubLight(stoplightStatusPTopic);
+    pubLight(stoplightStatusTopic);
   }
 }
 
@@ -144,9 +139,9 @@ void callback(char* topic, byte* payload, unsigned int length) {
   dbgMessage += ": ";
   dbgMessage += message;
   pubDebug(dbgMessage);
-  if (strTopic == parkDistanceTopic || strTopic == parkDistancePTopic) {
+  if (strTopic == parkDistanceTopic) {
     handleDistance(message.toInt());
-  } else if (strTopic == garageDoorTopic || strTopic == garageDoorPTopic) {
+  } else if (strTopic == garageDoorTopic) {
     updateGarageDoor(message);
   } else if (strTopic == stoplightActionTopic) {
     if (message == "red") {
@@ -184,6 +179,10 @@ void findKnownWiFiNetworks() {
   Serial.println(WiFi.localIP());
 }
 
+void sendHassDeviceConfig() {
+  client.publish("homeassistant/sensor/garage/stoplight/config", "{\"name\": \"Garage Stoplight\", \"state_topic\": \"/garage/stoplight/status\"}");
+}
+
 void reconnectMQTT() {
   while(!client.connected()) {
     if (client.connect((char*) devID.c_str(), "mqtt", "mymqttpassword")) {
@@ -197,8 +196,9 @@ void reconnectMQTT() {
         Serial.println("failed to publish");
       }
       client.subscribe(stoplightActionTopic);
-      client.subscribe(parkDistanceAllTopic);
-      client.subscribe(garageDoorAllTopic);
+      client.subscribe(parkDistanceTopic);
+      client.subscribe(garageDoorTopic);
+      sendHassDeviceConfig();
     } else {
       Serial.println("MQTT connection failed");
       delay(5000);
